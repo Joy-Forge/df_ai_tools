@@ -17,21 +17,24 @@
 
 ---
 
-### 方式 A：Docker（推荐，一行启动）
+### 方式 A：Docker（推荐）
 
 ```bash
-# Linux / macOS
-chmod +x scripts/linux/run-docker.sh
-./scripts/linux/run-docker.sh
+# 构建并启动（开发环境）
+docker compose up -d --build
 
-# Windows PowerShell
-.\scripts\windows\run-docker.ps1
+# 或者从 GHCR 拉取预构建镜像（生产环境）
+docker compose pull
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
 ```
 
-脚本会自动构建镜像 → 启动容器 → 在 `8000` 端口提供服务。
-
-查看日志：`docker compose logs -f`
-停止服务：`docker compose down`
+服务启动后在 `8000` 端口提供 REST API 和 MCP SSE 端点。
 
 ---
 
@@ -145,32 +148,28 @@ curl http://localhost:8000/api/todo/list?user_id=test
 
 ### 从 GHCR 拉取预构建镜像（无需本地构建）
 
-项目在 GitHub 推送 tag 时自动构建镜像并推送到 `ghcr.io`。在服务器上：
+项目在 GitHub 推送 tag 时自动构建镜像并推送到 `ghcr.io`。
 
 ```bash
 # 1. 登录 ghcr.io（需要 GitHub Personal Access Token）
 echo '你的_TOKEN' | docker login ghcr.io -u 你的用户名 --password-stdin
 
-# 2. 生成部署包（会自动填入正确的镜像地址）
-python scripts/deploy/generate-deploy.py
-
-# 3. 进入生成目录并启动
-cd dist/deploy
+# 2. 拉取并启动（使用项目自带的 compose 文件）
+docker compose pull
 docker compose up -d
 ```
 
-> 也可以直接到 GitHub Releases 页面下载 `*-deploy.tar.gz`，解压后运行 `./run.sh`。
-
-### 自动更新（Watchtower）
-
-在 NAS/VPS 上启动 Watchtower 后，它会每 5 分钟检查 GHCR 上的新镜像，自动拉取并重启容器：
+或者直接用 `docker run`：
 
 ```bash
-# Linux
-./scripts/linux/setup-watchtower.sh
-
-# Windows
-.\scripts\windows\setup-watchtower.ps1
+docker pull ghcr.io/joy-forge/df_ai_tools:latest
+docker run -d \
+  --name agent_tools_kit \
+  -p 8000:8000 \
+  -v ./data:/app/data \
+  -e TOOLKIT_DB=/app/data/toolkit.db \
+  --restart unless-stopped \
+  ghcr.io/joy-forge/df_ai_tools:latest
 ```
 
 ---
@@ -201,7 +200,7 @@ pre-commit install && pre-commit run --all-files
 | `1. FastAPI Dev Server (热重载)` | 启动开发服务器 |
 | `2. Run All Tests` | 运行全部测试 |
 | `3. Docker: Build & Run` | Docker 方式启动 |
-| `4. Generate Deploy Package` | 生成部署包 |
+| `4. Release (打标签发布)` | 打 tag 并推送触发 CI |
 
 ---
 
@@ -211,14 +210,14 @@ pre-commit install && pre-commit run --all-files
 |---------|---------|------|
 | `ci.yml` | push / PR → main | 3 个 Python 版本运行测试 |
 | `docker.yml` | push main / tag v\* | 构建 Docker 镜像 → 推送 ghcr.io |
-| `release.yml` | push tag v\* | 生成 Changelog → 打包部署包 → 创建 Release |
+| `release.yml` | push tag v\* | 生成 Changelog → 创建 GitHub Release |
 
 发布流程：
 
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
-# → 自动：测试 → 构建镜像 → 推送 GHCR → Release
+# → 自动：测试 → 构建镜像 → 推送 GHCR → 创建 Release
 ```
 
 ---
@@ -237,17 +236,10 @@ agent-tools-kit/
 │   └── notify/             # 通知模块
 ├── scripts/
 │   ├── linux/              # Linux 脚本
-│   │   ├── run-local.sh    #   本地 Python 启动
-│   │   └── run-docker.sh   #   Docker 启动
+│   │   └── run-local.sh    #   本地 Python 启动
 │   ├── windows/            # Windows 脚本
-│   │   ├── run-local.ps1
-│   │   └── run-docker.ps1
-│   ├── deploy/             # 部署相关
-│   │   ├── templates/      #   部署包模板
-│   │   ├── generate-deploy.py  # 部署包生成器
-│   │   ├── setup-watchtower.sh #   自动更新（Linux）
-│   │   └── setup-watchtower.ps1 # 自动更新（Windows）
-├── dist/deploy/            # 生成的部署包（运行 deploy/generate-deploy.py 后出现）
+│   │   └── run-local.ps1
+│   └── release.py          # 一键发布助手
 ├── tests/                  # 测试用例
 ├── Dockerfile
 ├── docker-compose.yml

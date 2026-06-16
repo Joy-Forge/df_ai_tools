@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-一键发布脚本 — 输入版本号，自动打 tag 并推送到 GitHub。
+一键发布脚本 — 输入版本号，自动打 tag 并推送到 GitHub (origin remote)。
+
+如果你有多个 remote（如 gitea），推送完 origin 后请手动运行：
+    git push gitea <tag>
 
 用法:
     python scripts/release.py
@@ -99,7 +102,7 @@ def main() -> None:
     print(f"\n🚀 创建 tag {tag} ...")
     subprocess.run(["git", "tag", tag], check=True)
 
-    print(f"📤 推送 tag 到 origin ...")
+    print(f"📤 推送 tag 到 origin (GitHub) ...")
     subprocess.run(["git", "push", "origin", tag], check=True)
 
     print(f"\n✅ 发布成功！GitHub Actions 正在运行：")

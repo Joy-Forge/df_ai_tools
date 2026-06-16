@@ -3,6 +3,7 @@ version: "3.8"
 services:
   toolkit:
     build: .
+    image: ghcr.io/joy-forge/df_ai_tools:latest
     container_name: agent_tools_kit
     ports:
       - "8000:8000"

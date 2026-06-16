@@ -41,17 +41,6 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
-      - name: Package deployment bundle
-        run: |
-          OWNER="${{ github.repository_owner }}"
-          TAG="${{ github.ref_name }}"
-          python scripts/deploy/generate-deploy.py --owner "${OWNER,,}" --tag "${TAG}"
-          mkdir -p _release/agent-tools-kit-"${TAG}"
-          cp -r dist/deploy/* _release/agent-tools-kit-"${TAG}"/
-          cd _release
-          tar czf agent-tools-kit-"${TAG}".tar.gz agent-tools-kit-"${TAG}"
-          zip -r agent-tools-kit-"${TAG}".zip agent-tools-kit-"${TAG}"
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -63,18 +52,29 @@ jobs:
 
             ---
 
-            ### 📦 部署包
-
-            下载 `agent-tools-kit-${{ github.ref_name }}.tar.gz` 或 `.zip`，
-            解压后上传到服务器/NAS，运行 `./run.sh`（Linux）或 `.\run.ps1`（Windows）即可部署。
-
             ### 🐳 Docker 镜像
 
-            镜像已自动推送到 ghcr.io：
+            镜像已自动推送到 GHCR，可直接拉取运行：
 
-            ```
+            ```bash
             docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+
+            # 或者通过 docker compose 运行
+            # 1. 创建 docker-compose.yml：
+            cat > docker-compose.yml << 'EOF'
+            services:
+              toolkit:
+                image: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+                container_name: agent_tools_kit
+                ports:
+                  - "8000:8000"
+                volumes:
+                  - ./data:/app/data
+                environment:
+                  - TOOLKIT_DB=/app/data/toolkit.db
+                restart: unless-stopped
+            EOF
+
+            # 2. 启动
+            docker compose up -d
             ```
-          files: |
-            _release/agent-tools-kit-${{ github.ref_name }}.tar.gz
-            _release/agent-tools-kit-${{ github.ref_name }}.zip

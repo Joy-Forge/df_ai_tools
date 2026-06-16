@@ -5,23 +5,21 @@
 | 脚本 | 用途 | 前置条件 |
 |------|------|---------|
 | `linux/run-local.sh` | 本地 Python 启动 | Python 3.10+ |
-| `linux/run-docker.sh` | Docker 方式启动 | Docker |
 | `windows/run-local.ps1` | 本地 Python 启动 | Python 3.10+ |
-| `windows/run-docker.ps1` | Docker 方式启动 | Docker Desktop |
-| `deploy/setup-watchtower.sh` | 配置 Watchtower 自动更新（Linux） | Docker, GitHub PAT |
-| `deploy/setup-watchtower.ps1` | 配置 Watchtower 自动更新（Windows） | Docker, GitHub PAT |
-| `deploy/generate-deploy.py` | 生成 dist/deploy/ 部署包 | Python 3.10+, git |
+| `release.py` | 一键打 tag 并推送发布 | git |
 
-## 使用示例
+## Docker 方式启动（推荐）
+
+直接用 `docker compose` 命令，无需脚本：
 
 ```bash
-# Linux / macOS
-./scripts/linux/run-local.sh
-./scripts/linux/run-docker.sh
-./scripts/deploy/setup-watchtower.sh
+# 构建并启动（开发环境）
+docker compose up -d --build
 
-# Windows PowerShell
-.\scripts\windows\run-local.ps1
-.\scripts\windows\run-docker.ps1
-.\scripts\deploy\setup-watchtower.ps1
+# 从 GHCR 拉取并启动（生产环境）
+docker compose pull
+docker compose up -d
+
+# 停止
+docker compose down
 ```

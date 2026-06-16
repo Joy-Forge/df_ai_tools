@@ -43,32 +43,25 @@
             "request": "launch",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}\\scripts\\windows\\run-docker.ps1"
-            ],
+            "command": "docker compose up -d --build",
             "justMyCode": true
         },
         {
-            "name": "📦 4. Generate Deploy Package",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}\\scripts\\deploy\\generate-deploy.py",
-            "args": [],
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
-            "name": "🏷️ 5. Release (打标签发布)",
+            "name": "🏷️ 4. Release (打标签发布)",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}\\scripts\\release.py",
             "args": [],
             "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "📤 5. Push Tags to Gitea",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "command": "git push gitea --tags",
             "justMyCode": true
         }
     ]
