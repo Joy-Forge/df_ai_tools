@@ -63,7 +63,7 @@ class TestTodoAPI:
         r = client.post("/api/todo/add", json={"user_id": "u1", "content": "测试"})
         tid = r.json()["id"]
         resp = client.delete(f"/api/todo/delete/{tid}", params={"user_id": "u2"})
-        assert resp.status_code == 200
+        assert resp.status_code == 404  # wrong user → not found
         resp = client.get("/api/todo/list", params={"user_id": "u1"})
         assert len(resp.json()) == 1
 

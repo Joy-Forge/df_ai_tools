@@ -31,7 +31,7 @@ class TestNotifyAPI:
             "user_id": "u1", "name": "test", "url": "https://httpbin.org/post"
         })
 
-        with patch("src.notify.router.requests") as mock_requests:
+        with patch("src.notify.service.requests") as mock_requests:
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_requests.post.return_value = mock_resp
@@ -63,7 +63,7 @@ class TestNotifyAPI:
         client.post("/api/notify/webhook/save", json={
             "user_id": "u1", "name": "test", "url": "https://example.com"
         })
-        with patch("src.notify.router.requests") as mock_requests:
+        with patch("src.notify.service.requests") as mock_requests:
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_requests.post.return_value = mock_resp
@@ -82,7 +82,7 @@ class TestNotifyAPI:
             "user_id": "u1", "name": "custom",
             "url": "https://example.com", "headers": '{"Authorization": "Bearer token123"}'
         })
-        with patch("src.notify.router.requests") as mock_requests:
+        with patch("src.notify.service.requests") as mock_requests:
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_requests.post.return_value = mock_resp
@@ -99,7 +99,7 @@ class TestNotifyAPI:
             "user_id": "u1", "name": "gethook",
             "url": "https://example.com", "method": "GET"
         })
-        with patch("src.notify.router.requests") as mock_requests:
+        with patch("src.notify.service.requests") as mock_requests:
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_requests.get.return_value = mock_resp

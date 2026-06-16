@@ -61,7 +61,7 @@ class TestCalendarAPI:
         """Test the check_reminders background function directly."""
         import sqlite3
         from datetime import datetime, timedelta
-        from src.calendar.tools import check_reminders
+        from src.calendar.service import check_reminders
 
         past = (datetime.now() - timedelta(minutes=5)).isoformat()
         conn = sqlite3.connect(test_db)

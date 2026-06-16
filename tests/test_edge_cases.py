@@ -40,15 +40,15 @@ class TestTodoEdgeCases:
 
     def test_invalid_priority(self, client):
         resp = client.post("/api/todo/add", json={"user_id": "u1", "content": "测试", "priority": 99})
-        assert resp.status_code == 200
+        assert resp.status_code == 422  # priority out of range
 
     def test_mark_done_nonexistent(self, client):
         resp = client.post("/api/todo/done/99999", params={"user_id": "u1"})
-        assert resp.status_code == 200
+        assert resp.status_code == 404  # not found
 
     def test_delete_nonexistent(self, client):
         resp = client.delete("/api/todo/delete/99999", params={"user_id": "u1"})
-        assert resp.status_code == 200
+        assert resp.status_code == 404  # not found
 
 
 class TestCalendarEdgeCases:
@@ -69,7 +69,7 @@ class TestCalendarEdgeCases:
         resp = client.post("/api/calendar/add", json={
             "user_id": "u1", "title": "测试", "event_time": "not-a-date"
         })
-        assert resp.status_code == 200
+        assert resp.status_code == 400  # invalid format
 
 
 class TestNotifyEdgeCases:

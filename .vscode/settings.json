@@ -19,5 +19,6 @@
         "htmlcov/": true,
         ".coverage": true,
         "data/": true
-    }
+    },
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }
