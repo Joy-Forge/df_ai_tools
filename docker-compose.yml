@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  toolkit:
+    build: .
+    container_name: agent_tools_kit
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TOOLKIT_DB=/app/data/toolkit.db
+    restart: unless-stopped
