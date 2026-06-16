@@ -4,33 +4,45 @@
 
 ---
 
-## 🚀 快速开始
+## 🚀 快速开始（一条命令启动）
 
-> **选择一条路走通即可，推荐 Docker。**
+> **前提条件：只需安装 [Docker](https://docs.docker.com/get-docker/)**，无需 Python / Node 等任何开发环境。
 
-### 前置条件
+### 方式 A：从 GHCR 拉取（生产环境，推荐）
 
-| 方式 | 要求 |
-|------|------|
-| **Docker（推荐）** | 安装 [Docker](https://docs.docker.com/get-docker/) |
-| **本地 Python** | Python 3.10+ |
-
----
-
-### 方式 A：Docker（推荐）
+项目在 GitHub 推送 tag 时自动构建镜像到 `ghcr.io`，**拉取即可直接使用**：
 
 ```bash
-# 构建并启动（开发环境）
-docker compose up -d --build
-
-# 或者从 GHCR 拉取预构建镜像（生产环境）
+# 拉取并启动
 docker compose pull
 docker compose up -d
+```
 
+或者直接用 `docker run`（适合自己控制端口映射和挂载目录）：
+
+```bash
+docker run -d \
+  --name agent_tools_kit \
+  -p 8000:8000 \
+  -v ./data:/app/data \
+  -e TOOLKIT_DB=/app/data/toolkit.db \
+  --restart unless-stopped \
+  ghcr.io/joy-forge/df_ai_tools:latest
+```
+
+### 方式 B：本地构建（想自己改代码或尝鲜）
+
+```bash
+docker compose up -d --build
+```
+
+### 查看日志 & 停止服务
+
+```bash
 # 查看日志
 docker compose logs -f
 
-# 停止服务
+# 停止
 docker compose down
 ```
 
@@ -38,22 +50,7 @@ docker compose down
 
 ---
 
-### 方式 B：本地 Python（不需要 Docker）
-
-```bash
-# Linux / macOS
-chmod +x scripts/linux/run-local.sh
-./scripts/linux/run-local.sh
-
-# Windows PowerShell
-.\scripts\windows\run-local.ps1
-```
-
-脚本自动安装依赖 → 启动热重载开发服务器。
-
----
-
-### ✅ 验证服务
+## ✅ 验证服务
 
 浏览器打开或执行：
 
@@ -185,45 +182,26 @@ API_KEY=
 
 > ⚠️ `.env` 文件包含敏感信息，已加入 `.gitignore`，**不要提交到版本控制**。
 
-### Docker 部署
-
-在 `docker-compose.yml` 或 `docker run -e` 中设置环境变量，详见下方生产部署章节。
-
 ---
 
 ---
 
-> **以下是进阶内容**，新手可以先跳过，等跑通上面 MVP 流程后再看。
+> **以下是进阶内容**，面向**开发者和进阶用户**，普通使用者可跳过。
 
 ---
 
-## ⚙️ 生产部署
-
-### 从 GHCR 拉取预构建镜像（无需本地构建）
-
-项目在 GitHub 推送 tag 时自动构建镜像并推送到 `ghcr.io`。
+## 🔧 本地运行（无需 Docker）
 
 ```bash
-# 1. 登录 ghcr.io（需要 GitHub Personal Access Token）
-echo '你的_TOKEN' | docker login ghcr.io -u 你的用户名 --password-stdin
+# Linux / macOS
+chmod +x scripts/linux/run-local.sh
+./scripts/linux/run-local.sh
 
-# 2. 拉取并启动（使用项目自带的 compose 文件）
-docker compose pull
-docker compose up -d
+# Windows PowerShell
+.\scripts\windows\run-local.ps1
 ```
 
-或者直接用 `docker run`：
-
-```bash
-docker pull ghcr.io/joy-forge/df_ai_tools:latest
-docker run -d \
-  --name agent_tools_kit \
-  -p 8000:8000 \
-  -v ./data:/app/data \
-  -e TOOLKIT_DB=/app/data/toolkit.db \
-  --restart unless-stopped \
-  ghcr.io/joy-forge/df_ai_tools:latest
-```
+脚本自动安装依赖 → 启动热重载开发服务器。
 
 ---
 
