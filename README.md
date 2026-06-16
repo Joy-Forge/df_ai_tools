@@ -138,6 +138,59 @@ curl http://localhost:8000/api/todo/list?user_id=test
 
 ---
 
+## ⚙️ 配置
+
+### 方式 1：系统环境变量
+
+直接设置系统环境变量即可覆盖默认值：
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `TOOLKIT_DB` | SQLite 数据库文件路径（相对或绝对路径） | `data/toolkit.db` |
+| `API_KEY` | API 访问密钥（可选；设置后需在 Header 中传 `X-API-Key`） | 空（不鉴权） |
+
+**Linux / macOS：**
+```bash
+export TOOLKIT_DB=/path/to/custom.db
+export API_KEY=your-secret-key
+```
+
+**Windows PowerShell：**
+```powershell
+$env:TOOLKIT_DB = "D:\data\my-toolkit.db"
+$env:API_KEY = "your-secret-key"
+```
+
+### 方式 2：`.env` 文件（推荐本地开发）
+
+复制示例文件并编辑：
+
+```bash
+# Linux / macOS
+cp .env.example .env
+
+# Windows
+copy .env.example .env
+```
+
+`.env` 文件内容：
+
+```ini
+# 数据库路径（支持相对路径和绝对路径）
+TOOLKIT_DB=data/toolkit.db
+
+# API 密钥（留空则不启用鉴权）
+API_KEY=
+```
+
+> ⚠️ `.env` 文件包含敏感信息，已加入 `.gitignore`，**不要提交到版本控制**。
+
+### Docker 部署
+
+在 `docker-compose.yml` 或 `docker run -e` 中设置环境变量，详见下方生产部署章节。
+
+---
+
 ---
 
 > **以下是进阶内容**，新手可以先跳过，等跑通上面 MVP 流程后再看。
@@ -202,6 +255,8 @@ pre-commit install && pre-commit run --all-files
 | `3. Docker: Build & Run` | Docker 方式启动 |
 | `4. Release (打标签发布)` | 打 tag 并推送触发 CI |
 
+> 📖 完整的开发工作流（Issue → 分支 → PR → 合并 → 发布）见 [docs/development-workflow.md](docs/development-workflow.md)
+
 ---
 
 ## 🔄 CI/CD
@@ -215,8 +270,8 @@ pre-commit install && pre-commit run --all-files
 发布流程：
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+# 一键发布（输入版本号，自动打 tag 并推送）
+python scripts/release.py
 # → 自动：测试 → 构建镜像 → 推送 GHCR → 创建 Release
 ```
 

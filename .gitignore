@@ -18,6 +18,9 @@ venv/
 env/
 .env/
 
+# Environment variables (user secrets, never commit)
+.env
+
 # IDE & editors
 .vscode/settings.json
 .idea/

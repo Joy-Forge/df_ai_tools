@@ -2,6 +2,12 @@
 
 import sqlite3
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env from project root (no-op if file doesn't exist)
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 DB_PATH = os.environ.get("TOOLKIT_DB", "data/toolkit.db")
 
