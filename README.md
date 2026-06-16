@@ -8,17 +8,19 @@
 
 > **前提条件：只需安装 [Docker](https://docs.docker.com/get-docker/)**，无需 Python / Node 等任何开发环境。
 
-### 方式 A：从 GHCR 拉取（生产环境，推荐）
-
-项目在 GitHub 推送 tag 时自动构建镜像到 `ghcr.io`，**拉取即可直接使用**：
+### 🥇 极简版 — 一条命令直接跑
 
 ```bash
-# 拉取并启动
-docker compose pull
-docker compose up -d
+docker run -d -p 8000:8000 ghcr.io/joy-forge/df_ai_tools:latest
 ```
 
-或者直接用 `docker run`（适合自己控制端口映射和挂载目录）：
+复制粘贴到终端，回车，完事。浏览器打开 `http://localhost:8000/api/health` 看到 `{"status":"ok"}` 即启动成功。
+
+> ⚠️ 极简版数据存储在容器内部，容器删除后数据会丢失。如需持久化请用下面的推荐版。
+
+---
+
+### 🥈 生产推荐版（数据持久化 + 自动重启）
 
 ```bash
 docker run -d \
@@ -30,23 +32,32 @@ docker run -d \
   ghcr.io/joy-forge/df_ai_tools:latest
 ```
 
-### 方式 B：本地构建（想自己改代码或尝鲜）
+与极简版的区别：
+
+| 参数 | 作用 |
+|------|------|
+| `--name` | 容器命名，方便管理 |
+| `-v ./data:/app/data` | 数据持久化到本地文件夹 |
+| `-e TOOLKIT_DB=...` | 数据库路径指向持久化卷 |
+| `--restart unless-stopped` | 系统重启 / 崩溃后自动拉起 |
+
+---
+
+### 🥉 Docker Compose（适合编排管理）
+
+如果已克隆仓库，也可以用 `docker compose` 管理：
 
 ```bash
-docker compose up -d --build
-```
+# 拉取最新镜像并启动
+docker compose pull
+docker compose up -d
 
-### 查看日志 & 停止服务
-
-```bash
 # 查看日志
 docker compose logs -f
 
 # 停止
 docker compose down
 ```
-
-服务启动后在 `8000` 端口提供 REST API 和 MCP SSE 端点。
 
 ---
 
