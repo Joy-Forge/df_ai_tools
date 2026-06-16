@@ -59,9 +59,9 @@
             "name": "📤 5. Push Tags to Gitea",
             "type": "python",
             "request": "launch",
+            "program": "${workspaceFolder}\\scripts\\push-gitea.py",
+            "args": [],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "command": "git push gitea --tags",
             "justMyCode": true
         }
     ]
