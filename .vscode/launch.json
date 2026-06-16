@@ -61,6 +61,15 @@
             "args": [],
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "🏷️ 5. Release (打标签发布)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}\\scripts\\release.py",
+            "args": [],
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }
