@@ -36,11 +36,11 @@ def list_webhooks(user_id: str):
 
 
 @router.post("/send")
-def send_notify(data: NotifyIn):
-    status = service.send_notification(data.user_id, data.channel, data.target, data.title, data.body)
+async def send_notify(data: NotifyIn):
+    status = await service.send_notification(data.user_id, data.channel, data.target, data.title, data.body)
     return {"status": status}
 
 
 @router.get("/log")
-def get_log(user_id: str, limit: int = 50):
-    return service.get_notify_log(user_id, limit)
+def get_log(user_id: str, limit: int = 50, offset: int = 0):
+    return service.get_notify_log(user_id, limit, offset)

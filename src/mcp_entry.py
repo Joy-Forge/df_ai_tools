@@ -6,7 +6,11 @@ Usage:
 """
 
 import sys
-sys.path.insert(0, ".")
+from pathlib import Path
+
+# Ensure project root is on sys.path regardless of CWD
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.main import mcp
 

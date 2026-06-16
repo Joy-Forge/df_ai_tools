@@ -14,9 +14,9 @@ def register_tools(mcp):
         return result["msg"]
 
     @mcp.tool()
-    def list_events(user_id: str, days: int = 30) -> str:
+    def list_events(user_id: str, days: int = 30, offset: int = 0) -> str:
         """查询未来日程"""
-        return service.list_events_text(user_id, days)
+        return service.list_events_text(user_id, days, offset)
 
     @mcp.tool()
     def get_pending_reminders(user_id: str) -> str:

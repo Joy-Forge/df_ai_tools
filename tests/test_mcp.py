@@ -27,8 +27,8 @@ class TestMCPTools:
         tools = self._list(mcp)
         tool_names = {t.name for t in tools}
         expected = {
-            "add_record", "get_records", "get_summary", "delete_record",
-            "add_todo", "list_todos", "mark_done", "delete_todo",
+            "add_record", "get_records", "get_summary", "delete_record", "update_record",
+            "add_todo", "list_todos", "mark_done", "mark_undo", "delete_todo", "edit_todo",
             "add_event", "list_events", "get_pending_reminders", "delete_event",
             "save_webhook", "list_webhooks", "send_notification", "get_notify_log",
         }
@@ -70,16 +70,16 @@ class TestMCPTools:
         assert "任务A" in text
 
     def test_add_event_tool(self, mcp):
-        from datetime import datetime, timedelta
-        future = (datetime.now() + timedelta(hours=1)).isoformat()
+        from datetime import datetime, timedelta, timezone
+        future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
         text = self._call(mcp.call_tool, "add_event", {
             "user_id": "u1", "title": "开会", "event_time": future, "remind_before": 10
         })
         assert "已添加" in text
 
     def test_list_events_tool(self, mcp):
-        from datetime import datetime, timedelta
-        future = (datetime.now() + timedelta(days=1)).isoformat()
+        from datetime import datetime, timedelta, timezone
+        future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
         self._call(mcp.call_tool, "add_event", {"user_id": "u1", "title": "明天", "event_time": future})
         text = self._call(mcp.call_tool, "list_events", {"user_id": "u1"})
         assert "明天" in text
@@ -99,3 +99,86 @@ class TestMCPTools:
         resp = client.get("/api/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
+
+    # -----------------------------------------------------------------------
+    # Missing-tool coverage: delete / done / send / log
+    # -----------------------------------------------------------------------
+
+    def test_delete_record_tool(self, mcp):
+        self._call(mcp.call_tool, "add_record", {"user_id": "u1", "amount": 99, "category": "测试"})
+        text = self._call(mcp.call_tool, "delete_record", {"user_id": "u1", "record_id": 1})
+        assert "已删除" in text
+
+    def test_delete_record_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "delete_record", {"user_id": "u1", "record_id": 999})
+        assert "不存在" in text
+
+    def test_mark_done_tool(self, mcp):
+        self._call(mcp.call_tool, "add_todo", {"user_id": "u1", "content": "测试任务"})
+        text = self._call(mcp.call_tool, "mark_done", {"user_id": "u1", "todo_id": 1})
+        assert "已完成" in text
+
+    def test_mark_done_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "mark_done", {"user_id": "u1", "todo_id": 999})
+        assert "不存在" in text
+
+    def test_mark_undo_tool(self, mcp):
+        self._call(mcp.call_tool, "add_todo", {"user_id": "u1", "content": "测试撤销"})
+        self._call(mcp.call_tool, "mark_done", {"user_id": "u1", "todo_id": 1})
+        text = self._call(mcp.call_tool, "mark_undo", {"user_id": "u1", "todo_id": 1})
+        assert "已恢复" in text
+
+    def test_mark_undo_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "mark_undo", {"user_id": "u1", "todo_id": 999})
+        assert "不存在" in text
+
+    def test_delete_todo_tool(self, mcp):
+        self._call(mcp.call_tool, "add_todo", {"user_id": "u1", "content": "待删除"})
+        text = self._call(mcp.call_tool, "delete_todo", {"user_id": "u1", "todo_id": 1})
+        assert "已删除" in text
+
+    def test_delete_todo_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "delete_todo", {"user_id": "u1", "todo_id": 999})
+        assert "不存在" in text
+
+    def test_delete_event_tool(self, mcp):
+        from datetime import datetime, timedelta, timezone
+        future = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+        self._call(mcp.call_tool, "add_event", {"user_id": "u1", "title": "待删日程", "event_time": future})
+        text = self._call(mcp.call_tool, "delete_event", {"user_id": "u1", "event_id": 1})
+        assert "已删除" in text
+
+    def test_delete_event_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "delete_event", {"user_id": "u1", "event_id": 999})
+        assert "不存在" in text
+
+    def test_get_pending_reminders_tool_empty(self, mcp):
+        text = self._call(mcp.call_tool, "get_pending_reminders", {"user_id": "u1"})
+        assert "暂无" in text
+
+    def test_get_notify_log_tool(self, mcp):
+        self._call(mcp.call_tool, "save_webhook", {"user_id": "u1", "name": "t", "url": "https://ex.com"})
+        text = self._call(mcp.call_tool, "get_notify_log", {"user_id": "u1"})
+        assert "暂无" in text
+
+    def test_update_record_tool(self, mcp):
+        self._call(mcp.call_tool, "add_record", {"user_id": "u1", "amount": 10, "category": "餐饮", "note": "原备注"})
+        text = self._call(mcp.call_tool, "update_record", {
+            "user_id": "u1", "record_id": 1, "amount": 99, "note": "新备注"
+        })
+        assert "已更新" in text
+
+    def test_update_record_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "update_record", {"user_id": "u1", "record_id": 999, "amount": 10})
+        assert "不存在" in text
+
+    def test_edit_todo_tool(self, mcp):
+        self._call(mcp.call_tool, "add_todo", {"user_id": "u1", "content": "原任务", "priority": 3})
+        text = self._call(mcp.call_tool, "edit_todo", {
+            "user_id": "u1", "todo_id": 1, "content": "新任务", "priority": 1
+        })
+        assert "已更新" in text
+
+    def test_edit_todo_tool_not_found(self, mcp):
+        text = self._call(mcp.call_tool, "edit_todo", {"user_id": "u1", "todo_id": 999, "content": "测试"})
+        assert "不存在" in text

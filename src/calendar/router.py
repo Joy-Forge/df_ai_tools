@@ -29,8 +29,8 @@ def add_event(data: EventIn):
 
 
 @router.get("/list")
-def list_events(user_id: str, days: int = 30, limit: int = 50):
-    return service.list_events(user_id, days, limit)
+def list_events(user_id: str, days: int = 30, limit: int = 50, offset: int = 0):
+    return service.list_events(user_id, days, limit, offset)
 
 
 @router.delete("/delete/{event_id}")

@@ -76,3 +76,23 @@ class TestTodoAPI:
         assert data[0]["content"] == "高优先"
         assert data[1]["content"] == "中优先"
         assert data[2]["content"] == "低优先"
+
+    def test_edit_todo(self, client):
+        r = client.post("/api/todo/add", json={"user_id": "u1", "content": "原内容", "priority": 3})
+        tid = r.json()["id"]
+        resp = client.put(f"/api/todo/edit/{tid}", params={"user_id": "u1"}, json={"content": "新内容", "priority": 1})
+        assert resp.status_code == 200
+        assert "已更新" in resp.json()["msg"]
+        todos = client.get("/api/todo/list", params={"user_id": "u1"}).json()
+        assert todos[0]["content"] == "新内容"
+        assert todos[0]["priority"] == 1
+
+    def test_edit_todo_not_found(self, client):
+        resp = client.put("/api/todo/edit/99999", params={"user_id": "u1"}, json={"content": "测试"})
+        assert resp.status_code == 404
+
+    def test_list_todos_offset(self, client):
+        for i in range(5):
+            client.post("/api/todo/add", json={"user_id": "u1", "content": f"任务{i}"})
+        resp = client.get("/api/todo/list", params={"user_id": "u1", "limit": 2, "offset": 2})
+        assert len(resp.json()) == 2

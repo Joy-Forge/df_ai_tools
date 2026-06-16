@@ -91,4 +91,9 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # --- indexes for common queries ---
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_records_user_id ON records(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_user_id_time ON events(user_id, event_time)")
         conn.commit()

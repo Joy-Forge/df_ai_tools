@@ -75,3 +75,23 @@ class TestAccountingAPI:
         assert resp.status_code == 404  # wrong user → not found
         resp = client.get("/api/accounting/list", params={"user_id": "u1"})
         assert len(resp.json()) == 1
+
+    def test_update_record(self, client):
+        r = client.post("/api/accounting/add", json={"user_id": "u1", "amount": 10, "category": "餐饮", "note": "原备注"})
+        rid = r.json()["id"]
+        resp = client.put(f"/api/accounting/update/{rid}", params={"user_id": "u1"}, json={"amount": 99, "note": "新备注"})
+        assert resp.status_code == 200
+        assert "已更新" in resp.json()["msg"]
+        records = client.get("/api/accounting/list", params={"user_id": "u1"}).json()
+        assert records[0]["amount"] == 99
+        assert records[0]["note"] == "新备注"
+
+    def test_update_record_not_found(self, client):
+        resp = client.put("/api/accounting/update/99999", params={"user_id": "u1"}, json={"amount": 10})
+        assert resp.status_code == 404
+
+    def test_list_records_offset(self, client):
+        for i in range(5):
+            client.post("/api/accounting/add", json={"user_id": "u1", "amount": i, "category": "测试"})
+        resp = client.get("/api/accounting/list", params={"user_id": "u1", "limit": 2, "offset": 2})
+        assert len(resp.json()) == 2

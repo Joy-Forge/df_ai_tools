@@ -1,7 +1,8 @@
 """Notify business logic — shared by REST API and MCP tools."""
 
+import asyncio
 import json
-import requests
+import httpx
 from src.db import get_conn
 
 
@@ -36,52 +37,64 @@ def list_webhooks_text(user_id: str) -> str:
                      for r in hooks)
 
 
-def send_notification(user_id: str, channel: str, target: str,
-                      title: str, body: str) -> str:
-    """Send a notification, return status string."""
-    status = "pending"
-    try:
-        if channel == "webhook":
-            with get_conn() as conn:
-                webhook = conn.execute(
-                    "SELECT url, method, headers FROM webhooks WHERE user_id = ? AND name = ?",
-                    (user_id, target),
-                ).fetchone()
-            if not webhook:
-                status = "error: webhook not found"
-            else:
-                headers = json.loads(webhook["headers"]) if webhook["headers"] else {}
-                payload = {"title": title, "body": body}
-                if webhook["method"].upper() == "GET":
-                    r = requests.get(webhook["url"], params=payload,
-                                     headers=headers, timeout=10)
-                else:
-                    r = requests.post(webhook["url"], json=payload,
-                                      headers=headers, timeout=10)
-                status = f"sent: {r.status_code}"
-        else:
-            status = f"unsupported channel: {channel}"
-    except requests.RequestException as e:
-        status = f"error: {str(e)}"
-    except Exception as e:
-        status = f"error: {str(e)}"
+def _fetch_webhook(user_id: str, name: str):
+    """Sync: fetch a webhook by user_id and name. Returns a sqlite3.Row or None."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT url, method, headers FROM webhooks WHERE user_id = ? AND name = ?",
+            (user_id, name),
+        ).fetchone()
 
+
+def _insert_notify_log(user_id: str, channel: str, target: str,
+                       title: str, body: str, status: str):
+    """Sync: insert a notification log entry."""
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO notify_log (user_id, channel, target, title, body, status) "
             "VALUES (?, ?, ?, ?, ?, ?)",
             (user_id, channel, target, title, body, status),
         )
+
+
+async def send_notification(user_id: str, channel: str, target: str,
+                            title: str, body: str) -> str:
+    """Send a notification, return status string."""
+    status = "pending"
+    try:
+        if channel == "webhook":
+            webhook = await asyncio.to_thread(_fetch_webhook, user_id, target)
+            if not webhook:
+                status = "error: webhook not found"
+            else:
+                headers = json.loads(webhook["headers"]) if webhook["headers"] else {}
+                payload = {"title": title, "body": body}
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    if webhook["method"].upper() == "GET":
+                        r = await client.get(webhook["url"], params=payload,
+                                             headers=headers)
+                    else:
+                        r = await client.post(webhook["url"], json=payload,
+                                              headers=headers)
+                status = f"sent: {r.status_code}"
+        else:
+            status = f"unsupported channel: {channel}"
+    except httpx.RequestError as e:
+        status = f"error: {str(e)}"
+    except Exception as e:
+        status = f"error: {str(e)}"
+
+    await asyncio.to_thread(_insert_notify_log, user_id, channel, target, title, body, status)
     return status
 
 
-def get_notify_log(user_id: str, limit: int = 50) -> list[dict]:
+def get_notify_log(user_id: str, limit: int = 50, offset: int = 0) -> list[dict]:
     """Return notification send log."""
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT channel, target, title, status, created_at FROM notify_log "
-            "WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-            (user_id, limit),
+            "WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (user_id, limit, offset),
         ).fetchall()
     return [
         {"channel": r["channel"], "target": r["target"], "title": r["title"],
@@ -90,9 +103,9 @@ def get_notify_log(user_id: str, limit: int = 50) -> list[dict]:
     ]
 
 
-def get_notify_log_text(user_id: str, limit: int = 20) -> str:
+def get_notify_log_text(user_id: str, limit: int = 20, offset: int = 0) -> str:
     """Return log as human-readable text (for MCP)."""
-    entries = get_notify_log(user_id, limit)
+    entries = get_notify_log(user_id, limit, offset)
     if not entries:
         return "暂无记录"
     return "\n".join(

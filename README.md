@@ -44,16 +44,19 @@ uvicorn src.main:app --reload --port 8000
 | **记账** | `POST /api/accounting/add` | 添加收支记录 |
 | | `GET /api/accounting/list?user_id=` | 查询记录 |
 | | `GET /api/accounting/summary?user_id=` | 汇总统计 |
+| | `PUT /api/accounting/update/{id}?user_id=` | 修改记录 |
 | | `DELETE /api/accounting/delete/{id}?user_id=` | 删除记录 |
 | **待办** | `POST /api/todo/add` | 添加待办 |
 | | `GET /api/todo/list?user_id=` | 查询待办列表 |
 | | `POST /api/todo/done/{id}?user_id=` | 标记完成 |
 | | `POST /api/todo/undo/{id}?user_id=` | 恢复未完成 |
+| | `PUT /api/todo/edit/{id}?user_id=` | 编辑待办 |
 | | `DELETE /api/todo/delete/{id}?user_id=` | 删除待办 |
 | **日历** | `POST /api/calendar/add` | 添加日程事件 |
 | | `GET /api/calendar/list?user_id=` | 查询日程 |
 | | `DELETE /api/calendar/delete/{id}?user_id=` | 删除日程 |
 | | `GET /api/calendar/pending_reminders?user_id=` | 待提醒事项 |
+| | `GET /api/calendar/reminders_log?user_id=` | 提醒发送记录 |
 | **通知** | `POST /api/notify/webhook/save` | 保存 Webhook |
 | | `GET /api/notify/webhook/list?user_id=` | Webhook 列表 |
 | | `POST /api/notify/send` | 发送通知 |
@@ -63,7 +66,7 @@ uvicorn src.main:app --reload --port 8000
 
 ## MCP 协议（Agent 调用）
 
-Agent 通过 MCP 协议连接后，自动发现全部 **16 个工具**。
+Agent 通过 MCP 协议连接后，自动发现全部 **19 个工具**。
 
 ### 方式 1：SSE（推荐）
 
@@ -100,10 +103,13 @@ Agent 配置指向 SSE 端点：
 | 记账 | `add_record` | 记账 |
 | | `get_records` | 查询记录 |
 | | `get_summary` | 汇总统计 |
+| | `update_record` | 修改记录 |
 | | `delete_record` | 删除记录 |
 | 待办 | `add_todo` | 添加待办 |
 | | `list_todos` | 查询待办列表 |
 | | `mark_done` | 标记完成 |
+| | `mark_undo` | 恢复未完成 |
+| | `edit_todo` | 编辑待办 |
 | | `delete_todo` | 删除待办 |
 | 日历 | `add_event` | 添加日程 |
 | | `list_events` | 查询日程 |

@@ -1,7 +1,9 @@
 """Tests for Notify REST API."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, AsyncMock
+import httpx
 import pytest
+from httpx import Response
 
 
 class TestNotifyAPI:
@@ -31,11 +33,13 @@ class TestNotifyAPI:
             "user_id": "u1", "name": "test", "url": "https://httpbin.org/post"
         })
 
-        with patch("src.notify.service.requests") as mock_requests:
-            mock_resp = MagicMock()
-            mock_resp.status_code = 200
-            mock_requests.post.return_value = mock_resp
+        mock_response = AsyncMock(spec=Response)
+        mock_response.status_code = 200
 
+        async def mock_post(*args, **kwargs):
+            return mock_response
+
+        with patch("httpx.AsyncClient.post", new=mock_post):
             resp = client.post("/api/notify/send", json={
                 "user_id": "u1", "channel": "webhook", "target": "test",
                 "title": "测试", "body": "内容"
@@ -63,10 +67,13 @@ class TestNotifyAPI:
         client.post("/api/notify/webhook/save", json={
             "user_id": "u1", "name": "test", "url": "https://example.com"
         })
-        with patch("src.notify.service.requests") as mock_requests:
-            mock_resp = MagicMock()
-            mock_resp.status_code = 200
-            mock_requests.post.return_value = mock_resp
+        mock_response = AsyncMock(spec=Response)
+        mock_response.status_code = 200
+
+        async def mock_post(*args, **kwargs):
+            return mock_response
+
+        with patch("httpx.AsyncClient.post", new=mock_post):
             client.post("/api/notify/send", json={
                 "user_id": "u1", "channel": "webhook", "target": "test",
                 "title": "测试", "body": "内容"
@@ -82,30 +89,32 @@ class TestNotifyAPI:
             "user_id": "u1", "name": "custom",
             "url": "https://example.com", "headers": '{"Authorization": "Bearer token123"}'
         })
-        with patch("src.notify.service.requests") as mock_requests:
-            mock_resp = MagicMock()
-            mock_resp.status_code = 200
-            mock_requests.post.return_value = mock_resp
+        mock_response = AsyncMock(spec=Response)
+        mock_response.status_code = 200
+
+        with patch.object(httpx.AsyncClient, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_response
             resp = client.post("/api/notify/send", json={
                 "user_id": "u1", "channel": "webhook", "target": "custom",
                 "title": "测试", "body": "内容"
             })
             assert resp.status_code == 200
-            call_args = mock_requests.post.call_args
-            assert call_args[1]["headers"]["Authorization"] == "Bearer token123"
+            _, kwargs = mock_post.call_args
+            assert kwargs["headers"]["Authorization"] == "Bearer token123"
 
     def test_webhook_get_method(self, client):
         client.post("/api/notify/webhook/save", json={
             "user_id": "u1", "name": "gethook",
             "url": "https://example.com", "method": "GET"
         })
-        with patch("src.notify.service.requests") as mock_requests:
-            mock_resp = MagicMock()
-            mock_resp.status_code = 200
-            mock_requests.get.return_value = mock_resp
+        mock_response = AsyncMock(spec=Response)
+        mock_response.status_code = 200
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_response
             resp = client.post("/api/notify/send", json={
                 "user_id": "u1", "channel": "webhook", "target": "gethook",
                 "title": "测试", "body": "内容"
             })
             assert resp.status_code == 200
-            mock_requests.get.assert_called_once()
+            mock_get.assert_called_once()

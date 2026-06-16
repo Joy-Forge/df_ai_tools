@@ -19,12 +19,12 @@ def register_tools(mcp):
         return service.list_webhooks_text(user_id)
 
     @mcp.tool()
-    def send_notification(user_id: str, channel: str, target: str,
-                          title: str, body: str) -> str:
+    async def send_notification(user_id: str, channel: str, target: str,
+                                title: str, body: str) -> str:
         """发送通知。channel: webhook, target: webhook名称"""
-        return service.send_notification(user_id, channel, target, title, body)
+        return await service.send_notification(user_id, channel, target, title, body)
 
     @mcp.tool()
-    def get_notify_log(user_id: str, limit: int = 20) -> str:
+    def get_notify_log(user_id: str, limit: int = 20, offset: int = 0) -> str:
         """查询通知发送记录"""
-        return service.get_notify_log_text(user_id, limit)
+        return service.get_notify_log_text(user_id, limit, offset)

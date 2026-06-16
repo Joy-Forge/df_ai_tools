@@ -16,6 +16,12 @@ class RecordIn(BaseModel):
     note: Optional[str] = ""
 
 
+class RecordUpdate(BaseModel):
+    amount: Optional[float] = None
+    category: Optional[str] = None
+    note: Optional[str] = None
+
+
 @router.post("/add")
 def add_record(data: RecordIn):
     result = service.add_record(data.user_id, data.amount, data.category, data.note)
@@ -23,8 +29,8 @@ def add_record(data: RecordIn):
 
 
 @router.get("/list")
-def list_records(user_id: str, limit: int = 50):
-    records = service.get_records(user_id, limit)
+def list_records(user_id: str, limit: int = 50, offset: int = 0):
+    records = service.get_records(user_id, limit, offset)
     return records
 
 
@@ -39,3 +45,14 @@ def delete_record(record_id: int, user_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="记录不存在")
     return {"msg": "已删除"}
+
+
+@router.put("/update/{record_id}")
+def update_record(record_id: int, user_id: str, data: RecordUpdate):
+    ok = service.update_record(record_id, user_id,
+                                amount=data.amount,
+                                category=data.category,
+                                note=data.note)
+    if not ok:
+        raise HTTPException(status_code=404, detail="记录不存在或未提供修改字段")
+    return {"msg": "已更新"}

@@ -1,10 +1,24 @@
 """Accounting business logic — shared by REST API and MCP tools."""
 
+import math
+
 from src.db import get_conn
+
+
+def _check_amount(amount: float) -> str | None:
+    """Validate amount. Return error message or None."""
+    if math.isnan(amount):
+        return "错误: 金额不能为 NaN"
+    if math.isinf(amount):
+        return "错误: 金额不能为 Infinity"
+    return None
 
 
 def add_record(user_id: str, amount: float, category: str, note: str = "") -> dict:
     """Add a financial record, return {id, msg}."""
+    err = _check_amount(amount)
+    if err:
+        return {"id": -1, "msg": err}
     with get_conn() as conn:
         c = conn.execute(
             "INSERT INTO records (user_id, amount, category, note) VALUES (?, ?, ?, ?)",
@@ -14,12 +28,12 @@ def add_record(user_id: str, amount: float, category: str, note: str = "") -> di
     return {"id": record_id, "msg": f"已记录: {category} {amount}元"}
 
 
-def get_records(user_id: str, limit: int = 20) -> list[dict]:
+def get_records(user_id: str, limit: int = 20, offset: int = 0) -> list[dict]:
     """Return recent records as a list of dicts."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, amount, category, note, created_at FROM records WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-            (user_id, limit),
+            "SELECT id, amount, category, note, created_at FROM records WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (user_id, limit, offset),
         ).fetchall()
     return [
         {"id": r["id"], "amount": r["amount"], "category": r["category"],
@@ -28,9 +42,9 @@ def get_records(user_id: str, limit: int = 20) -> list[dict]:
     ]
 
 
-def get_records_text(user_id: str, limit: int = 20) -> str:
+def get_records_text(user_id: str, limit: int = 20, offset: int = 0) -> str:
     """Return recent records as a human-readable string (for MCP)."""
-    records = get_records(user_id, limit)
+    records = get_records(user_id, limit, offset)
     if not records:
         return "暂无记录"
     return "\n".join(
@@ -64,5 +78,33 @@ def delete_record(record_id: int, user_id: str) -> bool:
     with get_conn() as conn:
         c = conn.execute(
             "DELETE FROM records WHERE id = ? AND user_id = ?", (record_id, user_id)
+        )
+        return c.rowcount > 0
+
+
+def update_record(record_id: int, user_id: str, amount: float | None = None,
+                  category: str | None = None, note: str | None = None) -> bool:
+    """Update one or more fields of a record. Return True if a row was updated.
+
+    Only non-None fields are updated.  At least one field must be provided.
+    """
+    fields = []
+    params = []
+    if amount is not None:
+        fields.append("amount = ?")
+        params.append(amount)
+    if category is not None:
+        fields.append("category = ?")
+        params.append(category)
+    if note is not None:
+        fields.append("note = ?")
+        params.append(note)
+    if not fields:
+        return False
+    params.extend([record_id, user_id])
+    with get_conn() as conn:
+        c = conn.execute(
+            f"UPDATE records SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
+            params,
         )
         return c.rowcount > 0
