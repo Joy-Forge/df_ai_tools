@@ -2,7 +2,11 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-dist/
+dist/*.tar.gz
+dist/*.zip
+dist/*.whl
+dist/*.egg
+dist/deploy/         # 由 scripts/generate-deploy.py 生成
 build/
 *.egg
 *.so
@@ -44,6 +48,9 @@ docs/superpowers/
 
 # Docker
 .docker/
+
+# Release workspace
+_release/
 
 # Logs
 *.log

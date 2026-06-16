@@ -1,8 +1,13 @@
 #!/bin/bash
-# Docker 方式启动 Agent Tools Kit
-# 需要先安装 Docker 和 docker-compose
+# Docker 方式启动 Agent Tools Kit（Linux / macOS）
+# 前置条件：Docker
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+cd "$PROJECT_DIR"
 
 echo "=== Agent Tools Kit (Docker) ==="
 
@@ -11,7 +16,7 @@ if ! command -v docker &> /dev/null; then
     echo "请访问 https://docs.docker.com/get-docker/ 安装"
     echo ""
     echo "💡 你也可以用本地 Python 方式启动："
-    echo "   ./run.sh"
+    echo "   ./scripts/linux/run-local.sh"
     exit 1
 fi
 

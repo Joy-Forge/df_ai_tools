@@ -1,8 +1,13 @@
 #!/bin/bash
-# 本地 Python 方式启动 Agent Tools Kit
-# 需要先安装 Python 3.10+
+# 本地 Python 方式启动 Agent Tools Kit（Linux / macOS）
+# 前置条件：Python 3.10+
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+cd "$PROJECT_DIR"
 
 echo "=== Agent Tools Kit (Local Python) ==="
 

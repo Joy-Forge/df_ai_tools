@@ -1,0 +1,20 @@
+# Agent Tools Kit — 飞牛NAS 优化部署版
+# 从 GHCR 拉取预构建镜像，无需本地构建
+# 配合 Watchtower 实现自动更新
+#
+# 使用方法：
+#   1. docker login ghcr.io（使用 GitHub Personal Access Token）
+#   2. docker compose up -d
+#   3. 启动 Watchtower 实现自动更新（见 scripts/linux/setup-watchtower.sh）
+
+services:
+  toolkit:
+    image: {{REGISTRY}}/{{OWNER}}/{{REPO_NAME}}:{{IMAGE_TAG}}
+    container_name: {{CONTAINER_NAME}}
+    ports:
+      - "{{HOST_PORT}}:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TOOLKIT_DB={{DB_PATH}}
+    restart: unless-stopped
