@@ -45,11 +45,24 @@ docker run -d \
 
 ### 🥉 Docker Compose（适合编排管理）
 
-如果已克隆仓库，也可以用 `docker compose` 管理：
+复制下面的内容保存为 `docker-compose.yml`，然后一条命令启动：
+
+```yaml
+services:
+  toolkit:
+    image: ghcr.io/joy-forge/df_ai_tools:latest
+    container_name: agent_tools_kit
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TOOLKIT_DB=/app/data/toolkit.db
+    restart: unless-stopped
+```
 
 ```bash
-# 拉取最新镜像并启动
-docker compose pull
+# 启动（自动拉取镜像）
 docker compose up -d
 
 # 查看日志
