@@ -1,7 +1,23 @@
 {
     "python.testing.pytestArgs": [
-        "tests"
+        "tests",
+        "--cov=src",
+        "--cov-report=term-missing",
+        "--cov-report=html"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}",
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.python"
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/*.pyc": true,
+        "htmlcov/": true,
+        ".coverage": true,
+        "data/": true
+    }
 }

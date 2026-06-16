@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+*.so
+.python-version
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# IDE & editors
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.json
+*.db
+htmlcov/
+coverage/
+coverage.xml
+
+# Data (runtime-generated, keep structure but ignore contents)
+data/
+!data/.gitkeep
+
+# Old service directories (superseded by src/)
+accounting/
+todo/
+calendar/
+notify/
+
+# Internal / tooling
+.codegraph/
+.reasonix/
+docs/superpowers/
+
+# Docker
+.docker/
+
+# Logs
+*.log
