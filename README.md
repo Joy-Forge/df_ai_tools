@@ -8,11 +8,25 @@
 
 > **前提条件：只需安装 [Docker](https://docs.docker.com/get-docker/)**，无需 Python / Node 等任何开发环境。
 
+> 💡 **镜像来源：** 镜像托管在阿里云容器镜像服务（ACR）和 GitHub Container Registry（ghcr.io），国内用户推荐使用阿里云地址（访问更快）。
+
 ### 🥇 极简版 — 一条命令直接跑
+
+<details>
+<summary><b>🇨🇳 阿里云（国内推荐）</b></summary>
+
+```bash
+docker run -d -p 8000:8000 crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:latest
+```
+</details>
+
+<details>
+<summary><b>🌐 GitHub（海外用户）</b></summary>
 
 ```bash
 docker run -d -p 8000:8000 ghcr.io/joy-forge/df_ai_tools:latest
 ```
+</details>
 
 复制粘贴到终端，回车，完事。浏览器打开 `http://localhost:8000/api/health` 看到 `{"status":"ok"}` 即启动成功。
 
@@ -21,6 +35,23 @@ docker run -d -p 8000:8000 ghcr.io/joy-forge/df_ai_tools:latest
 ---
 
 ### 🥈 生产推荐版（数据持久化 + 自动重启）
+
+<details>
+<summary><b>🇨🇳 阿里云（国内推荐）</b></summary>
+
+```bash
+docker run -d \
+  --name agent_tools_kit \
+  -p 8000:8000 \
+  -v ./data:/app/data \
+  -e TOOLKIT_DB=/app/data/toolkit.db \
+  --restart unless-stopped \
+  crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:latest
+```
+</details>
+
+<details>
+<summary><b>🌐 GitHub（海外用户）</b></summary>
 
 ```bash
 docker run -d \
@@ -31,6 +62,7 @@ docker run -d \
   --restart unless-stopped \
   ghcr.io/joy-forge/df_ai_tools:latest
 ```
+</details>
 
 与极简版的区别：
 
@@ -45,7 +77,26 @@ docker run -d \
 
 ### 🥉 Docker Compose
 
-复制下面的内容保存为 `docker-compose.yml`，然后一条命令启动：
+<details>
+<summary><b>🇨🇳 阿里云（国内推荐）</b></summary>
+
+```yaml
+services:
+  toolkit:
+    image: crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:latest
+    container_name: agent_tools_kit
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TOOLKIT_DB=/app/data/toolkit.db
+    restart: unless-stopped
+```
+</details>
+
+<details>
+<summary><b>🌐 GitHub（海外用户）</b></summary>
 
 ```yaml
 services:
@@ -60,6 +111,7 @@ services:
       - TOOLKIT_DB=/app/data/toolkit.db
     restart: unless-stopped
 ```
+</details>
 
 ```bash
 # 启动（自动拉取镜像）
