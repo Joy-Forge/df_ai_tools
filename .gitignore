@@ -48,6 +48,7 @@ data/
 .codegraph/
 .reasonix/
 docs/superpowers/
+docs/wiki/
 
 # Docker
 .docker/
