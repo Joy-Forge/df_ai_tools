@@ -90,6 +90,63 @@ curl http://localhost:8000/api/health
 > 各工具的字段、返回结构、典型用法见 **[Wiki: 模块手册](https://github.com/Joy-Forge/df_ai_tools/wiki)**。
 > REST API 文档自动生成于 `http://localhost:8000/docs`。
 
+---
+
+## 🖥️ 命令行工具 (`aitools`)
+
+通过 `aitools` CLI 在同一终端直接管理数据，适合快速操作和脚本自动化。
+
+### 安装
+
+```bash
+pip install -e .                     # 从项目根目录安装
+aitools --help                       # 验证
+```
+
+### 命令一览
+
+| 命令 | 子命令 | 说明 |
+|------|--------|------|
+| `aitools todo` | `list` · `add` · `done` · `undo` · `edit` · `delete` | 管理待办事项 |
+| `aitools accounting` | `list` · `add` · `summary` · `update` · `delete` | 管理记账记录 |
+| `aitools calendar` | `list` · `add` · `delete` · `pending-reminders` · `reminders-log` | 管理日程事件 |
+| `aitools notify` | `webhook-save` · `webhook-list` · `send` · `log` | 管理通知 |
+| `aitools health` | — | 检查服务健康状态 |
+
+### 常用示例
+
+```bash
+# 确认服务运行
+aitools health
+
+# 待办：添加 → 查看 → 标记完成
+aitools todo add "买牛奶" --priority 2 --due "2026-06-20"
+aitools todo list
+aitools todo done 1
+
+# 记账：记录支出 → 查看汇总
+aitools accounting add 25.50 --category 餐饮 --note "午餐"
+aitools accounting summary
+
+# 日历：添加重复日程 → 查看未来事件
+aitools calendar add --title "站会" --event-time "2026-06-20T09:00:00+08:00" --repeat daily
+aitools calendar list --days 7
+
+# 通知：保存 Webhook → 发送通知
+aitools notify webhook-save --name my_hook --url "https://hooks.example.com/notify"
+aitools notify send --channel webhook --target my_hook --title "提醒" --body "到时间了"
+```
+
+### 全局选项
+
+| 选项 | 环境变量 | 说明 |
+|------|----------|------|
+| `--server URL` | `AITOOLS_SERVER` | 服务地址（默认 `http://127.0.0.1:8000`） |
+| `--api-key KEY` | `AITOOLS_API_KEY` | API Key（服务启用鉴权时必填） |
+| `--user USER` | `AITOOLS_USER` | 用户标识（默认 `default`） |
+
+> 传递负数金额时需用 `--` 分隔，例如：`aitools accounting add -- -10.00 --category 退款`
+
 ### curl 速测
 
 ```bash
