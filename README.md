@@ -39,6 +39,7 @@ docker run -d -p 8000:8000 ghcr.io/joy-forge/df_ai_tools:latest
 <details>
 <summary><b>🇨🇳 阿里云（国内推荐）</b></summary>
 
+多行版本（可阅读）：
 ```bash
 docker run -d \
   --name agent_tools_kit \
@@ -48,6 +49,33 @@ docker run -d \
   --restart unless-stopped \
   crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:latest
 ```
+
+单行版本（可直接复制）：
+```
+docker run -d --name agent_tools_kit -p 8000:8000 -v ./data:/app/data -e TOOLKIT_DB=/app/data/toolkit.db --restart unless-stopped crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:latest
+```
+
+</details>
+
+<details>
+<summary><b>🌐 GitHub（海外用户）</b></summary>
+
+多行版本（可阅读）：
+```bash
+docker run -d \
+  --name agent_tools_kit \
+  -p 8000:8000 \
+  -v ./data:/app/data \
+  -e TOOLKIT_DB=/app/data/toolkit.db \
+  --restart unless-stopped \
+  ghcr.io/joy-forge/df_ai_tools:latest
+```
+
+单行版本（可直接复制）：
+```
+docker run -d --name agent_tools_kit -p 8000:8000 -v ./data:/app/data -e TOOLKIT_DB=/app/data/toolkit.db --restart unless-stopped ghcr.io/joy-forge/df_ai_tools:latest
+```
+
 </details>
 
 <details>
