@@ -3,14 +3,18 @@
 All datetimes are stored as naive-UTC so comparisons work regardless
 of the server's local timezone.  Both _now() and _parse_dt() return
 naive-UTC (tzinfo stripped after conversion).
+
+When creating events, always pass timezone-aware ISO strings (e.g.
+"2026-06-15T09:00:00+08:00") so the server can convert to UTC correctly.
+Naive datetimes (no offset) are assumed to be UTC.
 """
 
 from datetime import datetime, timedelta, timezone
-import logging
 
 from src.db import get_conn
+from src.logger import get_logger, OperationLogger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ISO format used for storage and exchange
 ISO_FMT = "%Y-%m-%dT%H:%M:%S"
@@ -46,18 +50,20 @@ def _now() -> datetime:
 def add_event(user_id: str, title: str, event_time: str,
               remind_before: int = 10, repeat: str = "") -> dict:
     """Add a calendar event, return {id, msg}."""
-    if remind_before < 0:
-        return {"id": -1, "msg": "错误: remind_before 不能为负值"}
-    dt = _parse_dt(event_time)
-    if dt is None:
-        return {"id": -1, "msg": "错误: 日期格式无效，请使用 ISO 格式如 2026-06-15T09:00:00"}
-    with get_conn() as conn:
-        c = conn.execute(
-            "INSERT INTO events (user_id, title, event_time, remind_before, repeat) VALUES (?, ?, ?, ?, ?)",
-            (user_id, title, dt.strftime(ISO_FMT), remind_before, repeat),
-        )
-        eid = c.lastrowid
-    return {"id": eid, "msg": f"已添加日程: {title} @ {event_time}"}
+    with OperationLogger(logger, "add_event", user_id=user_id, resource_type="calendar") as op:
+        if remind_before < 0:
+            return {"id": -1, "msg": "错误: remind_before 不能为负值"}
+        dt = _parse_dt(event_time)
+        if dt is None:
+            return {"id": -1, "msg": "错误: 日期格式无效，请使用 ISO 格式如 2026-06-15T09:00:00"}
+        with get_conn() as conn:
+            c = conn.execute(
+                "INSERT INTO events (user_id, title, event_time, remind_before, repeat) VALUES (?, ?, ?, ?, ?)",
+                (user_id, title, dt.strftime(ISO_FMT), remind_before, repeat),
+            )
+            eid = c.lastrowid
+        op.resource_id = eid
+        return {"id": eid, "msg": f"已添加日程: {title} @ {event_time}"}
 
 
 def list_events(user_id: str, days: int = 30, limit: int = 50, offset: int = 0) -> list[dict]:
@@ -93,11 +99,13 @@ def list_events_text(user_id: str, days: int = 30, offset: int = 0) -> str:
 
 def delete_event(event_id: int, user_id: str) -> bool:
     """Delete an event. Return True if a row was deleted."""
-    with get_conn() as conn:
-        c = conn.execute(
-            "DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, user_id)
-        )
-        return c.rowcount > 0
+    with OperationLogger(logger, "delete_event", user_id=user_id,
+                         resource_type="calendar", resource_id=event_id):
+        with get_conn() as conn:
+            c = conn.execute(
+                "DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, user_id)
+            )
+            return c.rowcount > 0
 
 
 def get_pending_reminders(user_id: str) -> list[dict]:

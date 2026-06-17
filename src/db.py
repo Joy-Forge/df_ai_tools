@@ -13,8 +13,16 @@ DB_PATH = os.environ.get("TOOLKIT_DB", "data/toolkit.db")
 
 
 def get_conn() -> sqlite3.Connection:
-    """Get a SQLite connection (context-manager friendly)."""
-    conn = sqlite3.connect(DB_PATH)
+    """Get a SQLite connection (context-manager friendly).
+
+    Each call creates a fresh connection — SQLite connections are lightweight
+    and WAL mode allows concurrent reads.  check_same_thread=False enables
+    use from async code via asyncio.to_thread.
+
+    Use as ``with get_conn() as conn: ...`` so the Connection context manager
+    auto-commits on success and rolls back on exception.
+    """
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")

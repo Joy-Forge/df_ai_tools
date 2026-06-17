@@ -1,17 +1,25 @@
 """Todo business logic — shared by REST API and MCP tools."""
 
 from src.db import get_conn
+from src.logger import get_logger, OperationLogger
+from src.audit import log_audit
+
+logger = get_logger(__name__)
 
 
 def add_todo(user_id: str, content: str, priority: int = 1, due_date: str = "") -> dict:
     """Add a todo, return {id, msg}."""
-    with get_conn() as conn:
-        c = conn.execute(
-            "INSERT INTO todos (user_id, content, priority, due_date) VALUES (?, ?, ?, ?)",
-            (user_id, content, priority, due_date),
-        )
-        todo_id = c.lastrowid
-    return {"id": todo_id, "msg": f"已添加待办: {content}"}
+    with OperationLogger(logger, "add_todo", user_id=user_id, resource_type="todo") as op:
+        with get_conn() as conn:
+            c = conn.execute(
+                "INSERT INTO todos (user_id, content, priority, due_date) VALUES (?, ?, ?, ?)",
+                (user_id, content, priority, due_date),
+            )
+            todo_id = c.lastrowid
+        op.resource_id = todo_id
+        log_audit("add_todo", user_id=user_id, resource_type="todo",
+                  resource_id=todo_id, details={"content": content, "priority": priority})
+        return {"id": todo_id, "msg": f"已添加待办: {content}"}
 
 
 def list_todos(user_id: str, done: int | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
@@ -50,11 +58,13 @@ def list_todos_text(user_id: str, status: str = "all", limit: int = 30, offset: 
 
 def mark_done(todo_id: int, user_id: str) -> bool:
     """Mark a todo as done. Return True if a row was updated."""
-    with get_conn() as conn:
-        c = conn.execute(
-            "UPDATE todos SET done = 1 WHERE id = ? AND user_id = ?", (todo_id, user_id)
-        )
-        return c.rowcount > 0
+    with OperationLogger(logger, "mark_done", user_id=user_id, 
+                         resource_type="todo", resource_id=todo_id):
+        with get_conn() as conn:
+            c = conn.execute(
+                "UPDATE todos SET done = 1 WHERE id = ? AND user_id = ?", (todo_id, user_id)
+            )
+            return c.rowcount > 0
 
 
 def mark_undo(todo_id: int, user_id: str) -> bool:
@@ -68,33 +78,40 @@ def mark_undo(todo_id: int, user_id: str) -> bool:
 
 def delete_todo(todo_id: int, user_id: str) -> bool:
     """Delete a todo. Return True if a row was deleted."""
-    with get_conn() as conn:
-        c = conn.execute(
-            "DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id)
-        )
-        return c.rowcount > 0
+    with OperationLogger(logger, "delete_todo", user_id=user_id,
+                         resource_type="todo", resource_id=todo_id):
+        with get_conn() as conn:
+            c = conn.execute(
+                "DELETE FROM todos WHERE id = ? AND user_id = ?", (todo_id, user_id)
+            )
+            deleted = c.rowcount > 0
+            if deleted:
+                log_audit("delete_todo", user_id=user_id, resource_type="todo", resource_id=todo_id)
+            return deleted
 
 
 def edit_todo(todo_id: int, user_id: str, content: str | None = None,
               priority: int | None = None, due_date: str | None = None) -> bool:
     """Update one or more fields of a todo. Return True if a row was updated."""
-    fields = []
-    params = []
-    if content is not None:
-        fields.append("content = ?")
-        params.append(content)
-    if priority is not None:
-        fields.append("priority = ?")
-        params.append(priority)
-    if due_date is not None:
-        fields.append("due_date = ?")
-        params.append(due_date)
-    if not fields:
-        return False
-    params.extend([todo_id, user_id])
-    with get_conn() as conn:
-        c = conn.execute(
-            f"UPDATE todos SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
-            params,
-        )
-        return c.rowcount > 0
+    with OperationLogger(logger, "edit_todo", user_id=user_id,
+                         resource_type="todo", resource_id=todo_id):
+        fields = []
+        params = []
+        if content is not None:
+            fields.append("content = ?")
+            params.append(content)
+        if priority is not None:
+            fields.append("priority = ?")
+            params.append(priority)
+        if due_date is not None:
+            fields.append("due_date = ?")
+            params.append(due_date)
+        if not fields:
+            return False
+        params.extend([todo_id, user_id])
+        with get_conn() as conn:
+            c = conn.execute(
+                f"UPDATE todos SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
+                params,
+            )
+            return c.rowcount > 0

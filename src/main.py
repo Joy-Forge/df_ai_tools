@@ -14,13 +14,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from src.db import init_db
+from src.logger import setup_logging, get_logger
 from src.accounting.router import router as accounting_router
 from src.todo.router import router as todo_router
 from src.calendar.router import router as calendar_router
 from src.notify.router import router as notify_router
+from src.backup_router import router as backup_router
+from src.auth_router import router as auth_router
+from src.data_exchange_router import router as data_exchange_router
+from src.audit_router import router as audit_router
+from src.auth import init_users_table
+from src.audit import init_audit_table
 from src.calendar.service import check_reminders
 
-logger = logging.getLogger(__name__)
+# Configure logging
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+LOG_STRUCTURED = os.environ.get("LOG_STRUCTURED", "false").lower() == "true"
+LOG_FILE = os.environ.get("LOG_FILE")
+setup_logging(level=LOG_LEVEL, structured=LOG_STRUCTURED, log_file=LOG_FILE)
+
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # MCP — create one shared server, register all tools
@@ -66,12 +79,32 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
     """FastAPI lifespan — init DB, start reminder scheduler."""
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logger.info("Starting Agent Tools Kit", extra={"action": "startup"})
     init_db()
+    init_users_table()
+    init_audit_table()
+    logger.info("Database initialized", extra={"action": "db_init"})
+    
     scheduler.start()
-    scheduler.add_job(check_reminders, "interval", minutes=1, id="reminder_job")
+    scheduler.add_job(
+        check_reminders, "interval", minutes=1,
+        id="reminder_job", max_instances=1, coalesce=True,
+        misfire_grace_time=60,
+    )
+    logger.info("Scheduler started", extra={"action": "scheduler_start"})
+    
+    # Startup catch-up: run once immediately to compensate for any downtime
+    try:
+        check_reminders()
+        logger.info("Startup reminder catch-up completed", extra={"action": "reminder_catchup"})
+    except Exception as e:
+        logger.error(f"Startup reminder catch-up failed: {e}", extra={"action": "reminder_catchup", "error": str(e)})
+    
     yield
+    
     scheduler.shutdown()
+    logger.info("Scheduler stopped", extra={"action": "scheduler_stop"})
+    logger.info("Agent Tools Kit stopped", extra={"action": "shutdown"})
 
 
 # Combine app lifespan with MCP session-manager lifespan — both are required
@@ -89,10 +122,13 @@ app = FastAPI(
     lifespan=app_lifespan_combined,
 )
 
-# CORS — allow all origins for personal NAS/VPS usage
+# CORS — configurable via environment; defaults to * for personal NAS/VPS usage
+_CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")
+_origins = [o.strip() for o in _CORS_ORIGINS.split(",")] if _CORS_ORIGINS else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -103,6 +139,41 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Set env API_KEY to enable.  If unset, all requests pass through.
 _API_KEY = os.environ.get("API_KEY", "")
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+# Max requests per minute per IP (0 = disabled)
+RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
+_rate_limit_store: dict[str, list[float]] = {}
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Simple in-memory rate limiter based on client IP."""
+    if RATE_LIMIT_PER_MINUTE > 0 and request.url.path.startswith("/api/"):
+        import time
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        window_start = now - 60
+
+        # Clean old entries
+        if client_ip in _rate_limit_store:
+            _rate_limit_store[client_ip] = [
+                t for t in _rate_limit_store[client_ip] if t > window_start
+            ]
+        else:
+            _rate_limit_store[client_ip] = []
+
+        if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_PER_MINUTE:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "请求过于频繁，请稍后再试"},
+            )
+
+        _rate_limit_store[client_ip].append(now)
+
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -126,6 +197,16 @@ async def auth_middleware(request: Request, call_next):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch unhandled exceptions and return a JSON error (no internal details leaked)."""
+    logger.error(
+        f"Unhandled exception: {exc}",
+        extra={
+            "action": "unhandled_exception",
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+        },
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=500,
         content={"detail": "服务器内部错误"},
@@ -135,6 +216,10 @@ app.include_router(accounting_router)
 app.include_router(todo_router)
 app.include_router(calendar_router)
 app.include_router(notify_router)
+app.include_router(backup_router)
+app.include_router(auth_router)
+app.include_router(data_exchange_router)
+app.include_router(audit_router)
 
 
 @app.get("/api/health")

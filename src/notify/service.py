@@ -4,18 +4,23 @@ import asyncio
 import json
 import httpx
 from src.db import get_conn
+from src.logger import get_logger, OperationLogger
+
+logger = get_logger(__name__)
 
 
 def save_webhook(user_id: str, name: str, url: str,
                  method: str = "POST", headers: str = "{}") -> dict:
     """Save a webhook config, return {id, msg}."""
-    with get_conn() as conn:
-        c = conn.execute(
-            "INSERT INTO webhooks (user_id, name, url, method, headers) VALUES (?, ?, ?, ?, ?)",
-            (user_id, name, url, method, headers),
-        )
-        wh_id = c.lastrowid
-    return {"id": wh_id, "msg": f"Webhook已保存: {name}"}
+    with OperationLogger(logger, "save_webhook", user_id=user_id, resource_type="webhook") as op:
+        with get_conn() as conn:
+            c = conn.execute(
+                "INSERT INTO webhooks (user_id, name, url, method, headers) VALUES (?, ?, ?, ?, ?)",
+                (user_id, name, url, method, headers),
+            )
+            wh_id = c.lastrowid
+        op.resource_id = wh_id
+        return {"id": wh_id, "msg": f"Webhook已保存: {name}"}
 
 
 def list_webhooks(user_id: str) -> list[dict]:
@@ -60,32 +65,35 @@ def _insert_notify_log(user_id: str, channel: str, target: str,
 async def send_notification(user_id: str, channel: str, target: str,
                             title: str, body: str) -> str:
     """Send a notification, return status string."""
-    status = "pending"
-    try:
-        if channel == "webhook":
-            webhook = await asyncio.to_thread(_fetch_webhook, user_id, target)
-            if not webhook:
-                status = "error: webhook not found"
+    with OperationLogger(logger, "send_notification", user_id=user_id, resource_type="notification"):
+        status = "pending"
+        try:
+            if channel == "webhook":
+                webhook = await asyncio.to_thread(_fetch_webhook, user_id, target)
+                if not webhook:
+                    status = "error: webhook not found"
+                else:
+                    headers = json.loads(webhook["headers"]) if webhook["headers"] else {}
+                    payload = {"title": title, "body": body}
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        if webhook["method"].upper() == "GET":
+                            r = await client.get(webhook["url"], params=payload,
+                                                 headers=headers)
+                        else:
+                            r = await client.post(webhook["url"], json=payload,
+                                                  headers=headers)
+                    status = f"sent: {r.status_code}"
             else:
-                headers = json.loads(webhook["headers"]) if webhook["headers"] else {}
-                payload = {"title": title, "body": body}
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    if webhook["method"].upper() == "GET":
-                        r = await client.get(webhook["url"], params=payload,
-                                             headers=headers)
-                    else:
-                        r = await client.post(webhook["url"], json=payload,
-                                              headers=headers)
-                status = f"sent: {r.status_code}"
-        else:
-            status = f"unsupported channel: {channel}"
-    except httpx.RequestError as e:
-        status = f"error: {str(e)}"
-    except Exception as e:
-        status = f"error: {str(e)}"
+                status = f"unsupported channel: {channel}"
+        except httpx.RequestError as e:
+            status = f"error: {str(e)}"
+            logger.error(f"HTTP request failed: {e}", extra={"user_id": user_id, "error": str(e)})
+        except Exception as e:
+            status = f"error: {str(e)}"
+            logger.error(f"Notification failed: {e}", extra={"user_id": user_id, "error": str(e)})
 
-    await asyncio.to_thread(_insert_notify_log, user_id, channel, target, title, body, status)
-    return status
+        await asyncio.to_thread(_insert_notify_log, user_id, channel, target, title, body, status)
+        return status
 
 
 def get_notify_log(user_id: str, limit: int = 50, offset: int = 0) -> list[dict]:

@@ -8,6 +8,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Disable rate limiting in tests
+os.environ["RATE_LIMIT_PER_MINUTE"] = "0"
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -16,7 +19,6 @@ from fastapi.testclient import TestClient
 def test_db(tmp_path):
     """Create a temporary DB path and override src.db.DB_PATH."""
     db_path = tmp_path / "test_toolkit.db"
-    # Override the DB path before any imports
     import src.db
     original = src.db.DB_PATH
     src.db.DB_PATH = str(db_path)
@@ -24,9 +26,12 @@ def test_db(tmp_path):
     src.db.init_db()
     yield str(db_path)
     src.db.DB_PATH = original
-    # Cleanup
-    if db_path.exists():
-        db_path.unlink()
+    # Cleanup — ignore errors (Windows file-locking)
+    try:
+        if db_path.exists():
+            db_path.unlink()
+    except PermissionError:
+        pass
 
 
 @pytest.fixture

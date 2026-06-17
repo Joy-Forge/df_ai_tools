@@ -3,6 +3,10 @@
 import math
 
 from src.db import get_conn
+from src.logger import get_logger, OperationLogger
+from src.audit import log_audit
+
+logger = get_logger(__name__)
 
 
 def _check_amount(amount: float) -> str | None:
@@ -16,16 +20,20 @@ def _check_amount(amount: float) -> str | None:
 
 def add_record(user_id: str, amount: float, category: str, note: str = "") -> dict:
     """Add a financial record, return {id, msg}."""
-    err = _check_amount(amount)
-    if err:
-        return {"id": -1, "msg": err}
-    with get_conn() as conn:
-        c = conn.execute(
-            "INSERT INTO records (user_id, amount, category, note) VALUES (?, ?, ?, ?)",
-            (user_id, amount, category, note),
-        )
-        record_id = c.lastrowid
-    return {"id": record_id, "msg": f"已记录: {category} {amount}元"}
+    with OperationLogger(logger, "add_record", user_id=user_id, resource_type="accounting") as op:
+        err = _check_amount(amount)
+        if err:
+            return {"id": -1, "msg": err}
+        with get_conn() as conn:
+            c = conn.execute(
+                "INSERT INTO records (user_id, amount, category, note) VALUES (?, ?, ?, ?)",
+                (user_id, amount, category, note),
+            )
+            record_id = c.lastrowid
+        op.resource_id = record_id
+        log_audit("add_record", user_id=user_id, resource_type="accounting",
+                  resource_id=record_id, details={"amount": amount, "category": category})
+        return {"id": record_id, "msg": f"已记录: {category} {amount}元"}
 
 
 def get_records(user_id: str, limit: int = 20, offset: int = 0) -> list[dict]:
@@ -75,11 +83,16 @@ def get_summary_text(user_id: str) -> str:
 
 def delete_record(record_id: int, user_id: str) -> bool:
     """Delete a record, return True if a row was deleted."""
-    with get_conn() as conn:
-        c = conn.execute(
-            "DELETE FROM records WHERE id = ? AND user_id = ?", (record_id, user_id)
-        )
-        return c.rowcount > 0
+    with OperationLogger(logger, "delete_record", user_id=user_id, 
+                         resource_type="accounting", resource_id=record_id):
+        with get_conn() as conn:
+            c = conn.execute(
+                "DELETE FROM records WHERE id = ? AND user_id = ?", (record_id, user_id)
+            )
+            deleted = c.rowcount > 0
+            if deleted:
+                log_audit("delete_record", user_id=user_id, resource_type="accounting", resource_id=record_id)
+            return deleted
 
 
 def update_record(record_id: int, user_id: str, amount: float | None = None,
@@ -88,23 +101,25 @@ def update_record(record_id: int, user_id: str, amount: float | None = None,
 
     Only non-None fields are updated.  At least one field must be provided.
     """
-    fields = []
-    params = []
-    if amount is not None:
-        fields.append("amount = ?")
-        params.append(amount)
-    if category is not None:
-        fields.append("category = ?")
-        params.append(category)
-    if note is not None:
-        fields.append("note = ?")
-        params.append(note)
-    if not fields:
-        return False
-    params.extend([record_id, user_id])
-    with get_conn() as conn:
-        c = conn.execute(
-            f"UPDATE records SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
-            params,
-        )
-        return c.rowcount > 0
+    with OperationLogger(logger, "update_record", user_id=user_id,
+                         resource_type="accounting", resource_id=record_id):
+        fields = []
+        params = []
+        if amount is not None:
+            fields.append("amount = ?")
+            params.append(amount)
+        if category is not None:
+            fields.append("category = ?")
+            params.append(category)
+        if note is not None:
+            fields.append("note = ?")
+            params.append(note)
+        if not fields:
+            return False
+        params.extend([record_id, user_id])
+        with get_conn() as conn:
+            c = conn.execute(
+                f"UPDATE records SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
+                params,
+            )
+            return c.rowcount > 0
