@@ -43,7 +43,7 @@ docker run -d \
 
 ---
 
-### 🥉 Docker Compose（适合编排管理）
+### 🥉 Docker Compose
 
 复制下面的内容保存为 `docker-compose.yml`，然后一条命令启动：
 
