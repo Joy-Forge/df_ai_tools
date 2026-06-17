@@ -133,7 +133,9 @@ async def health():
 # Mount MCP SSE endpoint at /mcp
 # ---------------------------------------------------------------------------
 try:
-    mcp_sse_app = mcp.sse_app()
+    # FastMCP 2.x/3.x: sse_app() expects an explicit mount_path so its
+    # internal routes (/sse, /messages) are nested under /mcp.
+    mcp_sse_app = mcp.sse_app(mount_path="/mcp")
     app.mount("/mcp", mcp_sse_app)
 except Exception:
     logger.warning("Could not mount MCP SSE app — try 'python -m src.mcp_entry' for stdio mode")
