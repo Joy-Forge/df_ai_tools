@@ -46,7 +46,9 @@ curl http://localhost:8000/api/health
 
 启动后，Agent 可通过 MCP 协议自动发现 **19 个工具**（4 个模块）。
 
-### SSE（推荐）
+> 协议：MCP **Streamable HTTP**（2025-06-18 协议规范，默认传输；Claude Desktop / picoclaw / hermes 等现代客户端默认连这个）。
+
+### SSE（Streamable HTTP，推荐）
 
 ```json
 {
@@ -62,13 +64,15 @@ curl http://localhost:8000/api/health
 
 ### stdio（不启 HTTP）
 
+> Windows 用户注意：`cwd` 用正斜杠或转义反斜杠，例如 `E:/sync/agentscode/agent_tools_kit`。
+
 ```json
 {
   "mcpServers": {
     "agent-tools-kit": {
       "command": "python",
       "args": ["-m", "src.mcp_entry"],
-      "cwd": "/path/to/agent-tools-kit"
+      "cwd": "E:/sync/agentscode/agent_tools_kit"
     }
   }
 }

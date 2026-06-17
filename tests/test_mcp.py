@@ -14,12 +14,18 @@ class TestMCPTools:
         return _mcp
 
     def _call(self, mcp_fn, tool_name, args):
-        """Helper: run an async MCP call synchronously, return text."""
-        content, _meta = asyncio.run(mcp_fn(tool_name, args))
+        """Helper: run an async MCP call synchronously, return text.
+
+        fastmcp 3.x returns a ToolResult object (with .content/.meta)
+        rather than the (content, meta) tuple used by the old SDK.
+        """
+        result = asyncio.run(mcp_fn(tool_name, args))
+        content = result.content
         return content[0].text
 
     def _list(self, mcp):
         """Helper: list tools synchronously."""
+        # fastmcp 3.x returns a list directly; SDK returned list too.
         return asyncio.run(mcp.list_tools())
 
     def test_tools_are_registered(self, mcp):

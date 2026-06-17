@@ -25,10 +25,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # MCP — create one shared server, register all tools
 # ---------------------------------------------------------------------------
+# Prefer the standalone fastmcp 3.x package over the bundled one inside
+# the official MCP SDK. fastmcp 3.x provides http_app(path=...) which is
+# the documented ASGI integration pattern; the SDK's streamable_http_app
+# hard-codes the path to "/mcp" and would double-prefix if mounted.
 try:
-    from mcp.server.fastmcp import FastMCP
-except ImportError:
     from fastmcp import FastMCP  # type: ignore[no-redef]
+    from fastmcp.utilities.lifespan import combine_lifespans  # type: ignore[import-not-found]
+except ImportError:
+    from mcp.server.fastmcp import FastMCP  # type: ignore[no-redef]
+    from mcp.server.fastmcp.utilities.lifespan import combine_lifespans  # type: ignore[no-redef]
 
 mcp = FastMCP("agent-tools-kit")
 
@@ -42,6 +48,15 @@ register_todo(mcp)
 register_calendar(mcp)
 register_notify(mcp)
 
+# Build the MCP ASGI app at the root path. We then mount it under /mcp below,
+# so the final endpoint becomes POST/GET /mcp. http_app(path="/") is the
+# fastmcp 3.x recommended pattern (see https://gofastmcp.com/integrations/fastapi).
+# Streamable HTTP transport (MCP protocol 2025-06-18). Replaces the legacy
+# SSE transport; modern MCP clients (Claude Desktop, picoclaw, hermes, …)
+# default to this. The endpoint supports both POST (send JSON-RPC) and GET
+# (open SSE stream) per the spec.
+mcp_app = mcp.http_app(path="/")
+
 # ---------------------------------------------------------------------------
 # Scheduler for calendar reminders
 # ---------------------------------------------------------------------------
@@ -49,7 +64,7 @@ scheduler = AsyncIOScheduler()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def app_lifespan(app: FastAPI):
     """FastAPI lifespan — init DB, start reminder scheduler."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     init_db()
@@ -59,14 +74,19 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 
+# Combine app lifespan with MCP session-manager lifespan — both are required
+# for the MCP endpoint to initialize sessions correctly.
+app_lifespan_combined = combine_lifespans(app_lifespan, mcp_app.lifespan)
+
+
 # ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Agent Tools Kit",
     description="4合1工具包：记账、待办、日历提醒、通知桥接 — 通过 REST API 和 MCP 协议供 Agent 调用",
-    version="2.0.0",
-    lifespan=lifespan,
+    version="2.1.0",
+    lifespan=app_lifespan_combined,
 )
 
 # CORS — allow all origins for personal NAS/VPS usage
@@ -88,7 +108,7 @@ _API_KEY = os.environ.get("API_KEY", "")
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     if _API_KEY:
-        # Allow health checks and MCP SSE without auth
+        # Allow health checks and MCP endpoint without auth
         path = request.url.path
         if not path.startswith("/api/health") and not path.startswith("/mcp"):
             api_key = request.headers.get("X-API-Key", "")
@@ -130,12 +150,10 @@ async def health():
 
 
 # ---------------------------------------------------------------------------
-# Mount MCP SSE endpoint at /mcp
+# Mount MCP Streamable HTTP endpoint at /mcp
 # ---------------------------------------------------------------------------
-try:
-    # FastMCP 2.x/3.x: sse_app() expects an explicit mount_path so its
-    # internal routes (/sse, /messages) are nested under /mcp.
-    mcp_sse_app = mcp.sse_app(mount_path="/mcp")
-    app.mount("/mcp", mcp_sse_app)
-except Exception:
-    logger.warning("Could not mount MCP SSE app — try 'python -m src.mcp_entry' for stdio mode")
+# mcp_app was created earlier with path="/" so that the FastMCP routes
+# sit at the root of the mounted sub-app; combined with app.mount("/mcp", ...)
+# the final public URL is POST/GET /mcp. The session manager relies on
+# lifespan=combine_lifespans(...) above being wired in.
+app.mount("/mcp", mcp_app)
