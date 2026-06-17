@@ -1,7 +1,9 @@
 # 阿里云构建专用 Dockerfile
 # 解决 Docker Hub 访问超时问题
+# 先在本地执行 docker pull && docker push 把 python:3.11-alpine 推到你的阿里云仓库
 
-FROM python:3.11-alpine
+# 基础镜像：使用阿里云容器镜像（需先手动推送）
+FROM crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/python:3.11-alpine
 
 # 使用清华/阿里云 pip 镜像加速
 # 阿里云 pip 镜像（推荐）
