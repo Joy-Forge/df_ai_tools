@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  push:
+    tags:
+      - '**'
 
 jobs:
   build:
@@ -23,6 +26,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       
+      - name: Generate version tag
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            VERSION="v$(date +%Y.%m.%d.%H%M)"
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
@@ -31,4 +44,4 @@ jobs:
           push: true
           tags: |
             crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:latest
-            crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:${{ github.sha }}
+            crpi-1bkinvfgt16i5pgx.cn-shenzhen.personal.cr.aliyuncs.com/deerfish/ai_tools:${{ steps.version.outputs.VERSION }}
