@@ -74,7 +74,7 @@ curl http://localhost:8000/api/health
 
 #### stdio（不启 HTTP）
 
-> Windows 用户注意：`cwd` 用正斜杠或转义反斜杠，例如 `E:/sync/agentscode/agent_tools_kit`。
+> Windows 用户注意：`cwd` 用正斜杠或转义反斜杠，例如 `C:/Users/you/projects/agent_tools_kit`。
 
 ```json
 {
@@ -82,7 +82,7 @@ curl http://localhost:8000/api/health
     "agent-tools-kit": {
       "command": "python",
       "args": ["-m", "src.mcp_entry"],
-      "cwd": "E:/sync/agentscode/agent_tools_kit"
+      "cwd": "C:/Users/you/projects/agent_tools_kit"
     }
   }
 }
