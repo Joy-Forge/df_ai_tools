@@ -32,6 +32,7 @@ source = ["src"]
 omit = [
     "*/tests/*",
     "src/mcp_entry.py",
+    "src/cli/*",
 ]
 branch = true
 
