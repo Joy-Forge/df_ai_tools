@@ -137,6 +137,18 @@ class TestDataExchange:
         resp = client.get("/api/data/export/ex_u1/csv/invalid_table")
         assert resp.status_code == 404
 
+    def test_export_csv_empty_table(self, client):
+        """export_csv() returns 404 when user has no data for that table."""
+        resp = client.get("/api/data/export/new_user_xyz/csv/accounting")
+        assert resp.status_code == 404
+
+    def test_import_json_bad_data(self, client):
+        """import_user_data() returns success=False for malformed data."""
+        from src.data_exchange import import_user_data
+        result = import_user_data("u1", {"accounting": [{"bad_field": 1}]})
+        assert result["success"] is False
+        assert "失败" in result["msg"]
+
     def test_import_json(self, client):
         export_data = {
             "accounting": [

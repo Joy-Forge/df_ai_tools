@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "🔧 1. FastAPI Dev Server (热重载)",
+            "name": "🔧 启动服务 (热重载)",
             "type": "python",
             "request": "launch",
             "module": "uvicorn",
@@ -10,24 +10,49 @@
                 "src.main:app",
                 "--reload",
                 "--host",
-                "0.0.0.0",
+                "127.0.0.1",
                 "--port",
                 "8000"
             ],
-            "jinja": true,
-            "justMyCode": true,
             "console": "integratedTerminal",
             "env": {
                 "PYTHONUNBUFFERED": "1"
             }
         },
         {
-            "name": "🧪 2. Run All Tests",
+            "name": "🧪 全量测试 + 覆盖率",
             "type": "python",
             "request": "launch",
             "module": "pytest",
             "args": [
                 "tests/",
+                "-v",
+                "--tb=short",
+                "--cov=src",
+                "--cov-report=term-missing",
+                "--cov-report=html"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "📦 单元测试 (不含接口)",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/test_logger.py",
+                "tests/test_backup_unit.py",
+                "tests/test_edge_cases.py",
+                "tests/test_mcp.py",
+                "tests/test_accounting.py",
+                "tests/test_todo.py",
+                "tests/test_calendar.py",
+                "tests/test_notify.py",
+                "tests/test_new_features.py",
                 "-v",
                 "--tb=short"
             ],
@@ -38,7 +63,55 @@
             }
         },
         {
-            "name": "🐳 3. Docker: Build & Run",
+            "name": "🔌 接口测试 (API 契约 + 中间件)",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/test_api_contract.py",
+                "tests/test_middleware.py",
+                "-v",
+                "--tb=short"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "📊 覆盖率报告",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "--cov=src",
+                "--cov-report=html:htmlcov",
+                "--cov-report=xml:coverage.xml",
+                "-q"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "🚀 启动服务 + 跑接口脚本",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}\\scripts\\test_api_combo.py",
+            "args": [],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "🐳 Docker: Build & Run",
             "type": "python",
             "request": "launch",
             "console": "integratedTerminal",
@@ -47,7 +120,7 @@
             "justMyCode": true
         },
         {
-            "name": "🏷️ 4. Release (打标签发布)",
+            "name": "🏷️ Release (打标签发布)",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}\\scripts\\release.py",
@@ -56,13 +129,21 @@
             "justMyCode": true
         },
         {
-            "name": "📤 5. Push Tags to Gitea",
+            "name": "📤 Push Tags to Gitea",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}\\scripts\\push-gitea.py",
             "args": [],
             "console": "integratedTerminal",
             "justMyCode": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "▶️ 一键测试 (全量 + 覆盖率)",
+            "configurations": [
+                "🧪 全量测试 + 覆盖率"
+            ]
         }
     ]
 }

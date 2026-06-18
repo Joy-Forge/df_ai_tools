@@ -1,5 +1,6 @@
 """Tests for Notify REST API."""
 
+import asyncio
 from unittest.mock import patch, AsyncMock
 import httpx
 import pytest
@@ -118,3 +119,54 @@ class TestNotifyAPI:
             })
             assert resp.status_code == 200
             mock_get.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Service-level tests: empty data + exception branches
+# ---------------------------------------------------------------------------
+class TestNotifyServiceEdgeCases:
+    def test_list_webhooks_text_empty(self, client):
+        """list_webhooks_text() returns '暂无Webhook' when no webhooks exist."""
+        from src.notify.service import list_webhooks_text
+        result = list_webhooks_text("nonexistent_user_xyz")
+        assert result == "暂无Webhook"
+
+    def test_get_notify_log_text_empty(self, client):
+        """get_notify_log_text() returns '暂无记录' when no log entries exist."""
+        from src.notify.service import get_notify_log_text
+        result = get_notify_log_text("nonexistent_user_xyz")
+        assert result == "暂无记录"
+
+    def test_send_notification_httpx_error(self, client):
+        """send_notification() catches httpx.RequestError gracefully."""
+        from src.notify.service import send_notification
+        client.post("/api/notify/webhook/save", json={
+            "user_id": "u_err", "name": "failhook", "url": "https://example.com"
+        })
+        async def _run():
+            with patch("src.notify.service.httpx.AsyncClient") as MockClient:
+                instance = AsyncMock()
+                instance.__aenter__ = AsyncMock(return_value=instance)
+                instance.__aexit__ = AsyncMock(return_value=False)
+                instance.post = AsyncMock(side_effect=httpx.RequestError("connection refused"))
+                MockClient.return_value = instance
+                return await send_notification("u_err", "webhook", "failhook", "t", "b")
+        status = asyncio.run(_run())
+        assert status.startswith("error:")
+
+    def test_send_notification_generic_exception(self, client):
+        """send_notification() catches generic exceptions gracefully."""
+        from src.notify.service import send_notification
+        client.post("/api/notify/webhook/save", json={
+            "user_id": "u_exc", "name": "exchook", "url": "https://example.com"
+        })
+        async def _run():
+            with patch("src.notify.service.httpx.AsyncClient") as MockClient:
+                instance = AsyncMock()
+                instance.__aenter__ = AsyncMock(return_value=instance)
+                instance.__aexit__ = AsyncMock(return_value=False)
+                instance.post = AsyncMock(side_effect=ValueError("unexpected"))
+                MockClient.return_value = instance
+                return await send_notification("u_exc", "webhook", "exchook", "t", "b")
+        status = asyncio.run(_run())
+        assert status.startswith("error:")
