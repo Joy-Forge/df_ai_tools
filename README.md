@@ -44,11 +44,21 @@ curl http://localhost:8000/api/health
 
 ## 🤖 连接你的 Agent
 
-启动后，Agent 可通过 MCP 协议自动发现 **19 个工具**（4 个模块）。
+启动后，Agent 可通过以下 3 种方式接入，按需选择：
+
+| 方式 | 原理 | 适用场景 | 需要服务运行 |
+|------|------|----------|:----------:|
+| **MCP** | Agent 通过 MCP 协议自动发现 19 个工具 | 支持 MCP 的客户端（Claude Desktop、Cursor、hermes 等） | ✅ |
+| **CLI** | Agent 调用 `aitools` 命令行操作数据 | 不支持 MCP 的 Agent / 脚本自动化 / 终端场景 | ✅ |
+| **Skills** | 给 Agent 一个 SKILL.md，教它怎么用 CLI | Reasonix、Claude Code 等支持 Skill 的平台 | ✅ |
+
+> **推荐路径**：优先用 MCP（协议级集成，Agent 自动发现工具）；不支持 MCP 时用 CLI + Skills 组合。
+
+### MCP 接入（推荐）
 
 > 协议：MCP **Streamable HTTP**（2025-06-18 协议规范，默认传输；Claude Desktop / picoclaw / hermes 等现代客户端默认连这个）。
 
-### SSE（Streamable HTTP，推荐）
+#### SSE（Streamable HTTP，推荐）
 
 ```json
 {
@@ -62,7 +72,7 @@ curl http://localhost:8000/api/health
 
 > Agent 在其他机器 / NAS 上运行时，把 `localhost` 换成服务器 IP。
 
-### stdio（不启 HTTP）
+#### stdio（不启 HTTP）
 
 > Windows 用户注意：`cwd` 用正斜杠或转义反斜杠，例如 `E:/sync/agentscode/agent_tools_kit`。
 
@@ -78,7 +88,7 @@ curl http://localhost:8000/api/health
 }
 ```
 
-### 工具一览
+#### 工具一览
 
 | 模块 | 工具 |
 |------|------|
@@ -90,11 +100,27 @@ curl http://localhost:8000/api/health
 > 各工具的字段、返回结构、典型用法见 **[Wiki: 模块手册](https://github.com/Joy-Forge/df_ai_tools/wiki)**。
 > REST API 文档自动生成于 `http://localhost:8000/docs`。
 
+### CLI + Skills 接入
+
+Agent 不支持 MCP 时，可通过 `aitools` CLI 操作数据。配合 Skills 文件，Agent 能自动学会所有命令：
+
+```bash
+# 安装 CLI
+pip install -e .
+
+# Agent 调用示例
+aitools todo add "买牛奶" --priority 2
+aitools accounting add 25.50 --category 餐饮
+aitools calendar list --days 7
+```
+
+**Skills 文件**（`.reasonix/skills/aitools-cli/SKILL.md`）教 Agent 如何使用 CLI，适用于 Reasonix、Claude Code 等支持 Skill 的平台。详细命令参考下方「命令行工具」章节。
+
 ---
 
 ## 🖥️ 命令行工具 (`aitools`)
 
-通过 `aitools` CLI 在同一终端直接管理数据，适合快速操作和脚本自动化。
+通过 `aitools` CLI 直接管理数据——既适合人工操作，也是 Agent 通过 CLI 接入的底层能力。
 
 ### 安装
 
