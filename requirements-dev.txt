@@ -1,4 +1,4 @@
-pytest>=8.0
+pytest>=9.1.1
 pytest-cov>=5.0
 # MCP Python SDK — used by tests/test_mcp_transport.py for e2e
 # self-test against the Streamable HTTP endpoint. v1.x is the stable
